@@ -1,0 +1,7 @@
+streamlit
+langchain
+langchain-community
+faiss-cpu
+pypdf
+ollama
+python -m streamlit run chatbot.py

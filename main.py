@@ -1,74 +1,65 @@
 import streamlit as st
-import faiss
-import os
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_community.embeddings import OllamaEmbeddings
-from langchain.vectorstores import FAISS
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.llms import Ollama
 
-# Set up Streamlit UI
-st.set_page_config(page_title="RAGBot - PDF Q&A", layout="wide")
+# Set up Streamlit UI with dark blue theme
+st.set_page_config(page_title="Simple Chatbot", layout="wide")
+
+st.markdown("""
+    <style>
+        body {
+            background-color: #0D1B2A;
+            color: #FFFFFF;
+        }
+        .message-container {
+            width: 80%;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        .user-message {
+            background-color: rgba(100, 100, 100, 0.3);
+            text-align: left;
+            margin-left: 20%;
+        }
+        .bot-message {
+            background-color: rgba(50, 50, 50, 0.3);
+            text-align: left;
+            margin-right: 20%;
+        }
+        h1 {
+            text-align: center;
+            color: white;
+        }
+    </style>
+    """, unsafe_allow_html=True)
 
 # Title at the top
-st.markdown("<h1 style='text-align: center;'>📄 RAGBot - PDF Q&A</h1>", unsafe_allow_html=True)
+st.markdown("<h1>Simple Chatbot</h1>", unsafe_allow_html=True)
 
-# Upload PDF File
-uploaded_file = st.file_uploader("📂 Upload a PDF file", type="pdf")
+# Initialize chat history
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-if uploaded_file:
-    pdf_path = os.path.join("docs", uploaded_file.name)
+# Display chat history
+for message in st.session_state.messages:
+    if message["role"] == "user":
+        st.markdown(f'<div class="message-container user-message">🧑‍💻 {message["content"]}</div>', unsafe_allow_html=True)
+    else:
+        st.markdown(f'<div class="message-container bot-message">🤖 {message["content"]}</div>', unsafe_allow_html=True)
+
+# Chat input
+user_input = st.chat_input("Ask something...")
+
+if user_input:
+    # Append user input to chat history
+    st.session_state.messages.append({"role": "user", "content": user_input})
+
+    # ✅ Use Ollama AI model to generate a response
+    llm = Ollama(model="mistral")  # You can use "llama2" or "gemma" as well
+    bot_response = llm.invoke(user_input)
+
+    # Append AI response
+    st.session_state.messages.append({"role": "assistant", "content": bot_response})
     
-    with open(pdf_path, "wb") as f:
-        f.write(uploaded_file.getbuffer())
-
-    # Load & extract text from PDF
-    loader = PyPDFLoader(pdf_path)
-    docs = loader.load()
-
-    # Split text into chunks
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
-    split_docs = text_splitter.split_documents(docs)
-
-    # Create vector database
-    embeddings = OllamaEmbeddings(model="mistral")  # Use 'gemma' or 'llama2'
-    vectorstore = FAISS.from_documents(split_docs, embeddings)
-
-    # Save FAISS index
-    vectorstore.save_local("faiss_index")
-
-    st.success("✅ PDF Uploaded & Processed! You can now ask questions.")
-
-    # Initialize chat history
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-
-    # Display chat history
-    for message in st.session_state.messages:
-        role = "🧑‍💻 You" if message["role"] == "user" else "🤖 AI"
-        st.markdown(f"**{role}:** {message['content']}")
-
-    # Chat input
-    user_input = st.chat_input("Ask a question about the PDF...")
-
-    if user_input:
-        # Append user question
-        st.session_state.messages.append({"role": "user", "content": user_input})
-
-        # Load FAISS index
-        vectorstore = FAISS.load_local("faiss_index", embeddings)
-
-        # Retrieve relevant text from PDF
-        docs = vectorstore.similarity_search(user_input, k=3)
-        context = "\n\n".join([doc.page_content for doc in docs])
-
-        # Use Ollama to generate answer
-        llm = Ollama(model="mistral")
-        prompt = f"Answer based on the provided context:\n\n{context}\n\nQuestion: {user_input}"
-        response = llm.invoke(prompt)
-
-        # Append AI response
-        st.session_state.messages.append({"role": "assistant", "content": response})
-
-        # Display AI response
-        st.markdown(f"**🤖 AI:** {response}")
+    # Rerun the script to update UI
+    st.rerun()

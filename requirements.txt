@@ -5,3 +5,4 @@ faiss-cpu
 pypdf
 ollama
 python -m streamlit run chatbot.py
+

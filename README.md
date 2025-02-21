@@ -42,3 +42,5 @@ git push origin main
 
 # Deactivate virtual environment when done  
 deactivate  
+
+Done
